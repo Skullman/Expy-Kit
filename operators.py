@@ -169,9 +169,47 @@ class ConvertBoneNaming(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class UpdateMetarig(bpy.types.Operator):
-    """Match current rig pose to metarig"""
-    # TODO
+class ExtractMetarig(bpy.types.Operator):
+    """Create Metarig from current object"""
+    bl_idname = "object.charigty_extract_metarig"
+    bl_label = "Extract Metarig"
+    bl_description = "Create Metarig from current object"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    skeleton_type: EnumProperty(items=skeleton_types,
+                                name="Source Type",
+                                default='--')
+
+    @classmethod
+    def poll(cls, context):
+        if not context.object:
+            return False
+        if context.mode != 'POSE':
+            return False
+        if context.object.type != 'ARMATURE':
+            return False
+
+        return True
+
+    def execute(self, context):
+        # TODO: look for existing metarig to update
+
+        from rigify.metarigs import human
+
+        armature = bpy.data.armatures.new('metarig')
+        metarig = bpy.data.objects.new("metarig", armature)
+        context.collection.objects.link(metarig)
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+
+        metarig.select_set(True)
+        bpy.context.view_layer.objects.active = metarig
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        human.create(metarig)
+
+        return {'FINISHED'}
 
 
 class ActionRangeToScene(bpy.types.Operator):
