@@ -180,6 +180,9 @@ class ExtractMetarig(bpy.types.Operator):
                                 name="Source Type",
                                 default='--')
 
+    generate: BoolProperty(name='Generate Controls',
+                           default=False)
+
     # TODO: float min_forward knee
     # TODO: float min_forward elbow
     # TODO: bool generate
@@ -196,6 +199,7 @@ class ExtractMetarig(bpy.types.Operator):
         return True
 
     def execute(self, context):
+        src_object = context.object
         src_armature = context.object.data
         src_skeleton = skeleton_from_type(self.skeleton_type)
         if not src_skeleton:
@@ -280,12 +284,36 @@ class ExtractMetarig(bpy.types.Operator):
                 palm_bone.head = hand_bone.head * 0.75 + child_head * 0.25
                 palm_bone.tail = child_head
 
-        # TODO: pelvis
-        # TODO: breast
-        # TODO: heel
+            heel_bone = met_armature.edit_bones['heel.02.' + side]
+            toe_bone = met_armature.edit_bones['toe.' + side]
+
+            heel_length = heel_bone.length
+            # TODO: get backmost heel vertex from rigged model
+            if heel_bone.head.x > 0:
+                heel_bone.head.x = toe_bone.head.x - heel_length/2
+                heel_bone.tail.x = toe_bone.head.x + heel_length/2
+            else:
+                heel_bone.head.x = toe_bone.head.x + heel_length / 2
+                heel_bone.tail.x = toe_bone.head.x - heel_length / 2
+
+            spine_bone = met_armature.edit_bones['spine']
+            pelvis_bone = met_armature.edit_bones['pelvis.' + side]
+            pelvis_bone.head = spine_bone.head
+            pelvis_bone.tail.z = spine_bone.tail.z
+
+            spine_bone = met_armature.edit_bones['spine.003']
+            breast_bone = met_armature.edit_bones['breast.' + side]
+            breast_bone.head.z = spine_bone.head.z
+            breast_bone.tail.z = spine_bone.head.z
 
         for bone_name in bone_mapping.rigify_face_bones:
             met_armature.edit_bones.remove(met_armature.edit_bones[bone_name])
+
+        bpy.ops.object.mode_set(mode='POSE')
+        met_armature.rigify_target_rig = src_object
+
+        if self.generate:
+            bpy.ops.pose.rigify_generate()
 
         return {'FINISHED'}
 
