@@ -270,9 +270,18 @@ class ExtractMetarig(bpy.types.Operator):
         met_armature.edit_bones['spine.003'].tail = met_armature.edit_bones['spine.004'].head
         met_armature.edit_bones['spine.005'].head = (met_armature.edit_bones['spine.004'].head + met_armature.edit_bones['spine.006'].head) / 2
 
+        for side in "L", "R":
+            hand_bone = met_armature.edit_bones['hand.' + side]
+            for i in range(1, 5):
+                bone_name = "palm.{0:02d}.{1}".format(i, side)
+                palm_bone = met_armature.edit_bones[bone_name]
+
+                child_head = palm_bone.children[0].head
+                palm_bone.head = hand_bone.head * 0.75 + child_head * 0.25
+                palm_bone.tail = child_head
+
         # TODO: pelvis
         # TODO: breast
-        # TODO: palm
         # TODO: heel
 
         for bone_name in bone_mapping.rigify_face_bones:
