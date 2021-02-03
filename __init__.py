@@ -58,6 +58,6 @@ def unregister():
     bpy.utils.unregister_class(operators.ConstraintStatus)
     bpy.utils.unregister_class(operators.ConvertBoneNaming)
     bpy.utils.unregister_class(operators.ConvertGameFriendly)
-    bpy.utils.register_class(operators.ExtractMetarig)
+    bpy.utils.unregister_class(operators.ExtractMetarig)
     bpy.utils.unregister_class(operators.MergeHeadTails)
     bpy.utils.unregister_class(operators.RevertDotBoneNames)

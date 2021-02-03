@@ -225,11 +225,11 @@ class RigifyMeta(HumanSkeleton):
                                  hand="hand.{0}".format(side))
 
         self.left_fingers = HumanFingers(
-            thumb=["thumb.{1:03d}.{0}".format(side, i) for i in range(1, 4)],
-            index=["f_index.{1:03d}.{0}".format(side, i) for i in range(1, 4)],
-            middle=["f_middle.{1:03d}.{0}".format(side, i) for i in range(1, 4)],
-            ring=["f_ring.{1:03d}.{0}".format(side, i) for i in range(1, 4)],
-            pinky=["f_pinky.{1:03d}.{0}".format(side, i) for i in range(1, 4)],
+            thumb=["thumb.{1:02d}.{0}".format(side, i) for i in range(1, 4)],
+            index=["f_index.{1:02d}.{0}".format(side, i) for i in range(1, 4)],
+            middle=["f_middle.{1:02d}.{0}".format(side, i) for i in range(1, 4)],
+            ring=["f_ring.{1:02d}.{0}".format(side, i) for i in range(1, 4)],
+            pinky=["f_pinky.{1:02d}.{0}".format(side, i) for i in range(1, 4)],
         )
 
         self.left_leg = HumanLeg(upleg="thigh.{0}".format(side),

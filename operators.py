@@ -119,21 +119,9 @@ class ConvertBoneNaming(bpy.types.Operator):
     def poll(cls, context):
         return all((context.object, context.mode == 'POSE', context.object.type == 'ARMATURE'))
 
-    @staticmethod
-    def skeleton_from_type(skeleton_type):
-        # TODO: this would be better handled by EnumTypes
-        if skeleton_type == 'mixamo':
-            return bone_mapping.MixamoSkeleton()
-        if skeleton_type == 'rigify':
-            return bone_mapping.RigifySkeleton()
-        if skeleton_type == 'rigify_meta':
-            return bone_mapping.RigifyMeta()
-        if skeleton_type == 'unreal':
-            return bone_mapping.UnrealSkeleton()
-
     def execute(self, context):
-        src_skeleton = self.skeleton_from_type(self.source)
-        trg_skeleton = self.skeleton_from_type(self.target)
+        src_skeleton = skeleton_from_type(self.source)
+        trg_skeleton = skeleton_from_type(self.target)
 
         if all((src_skeleton, trg_skeleton, src_skeleton != trg_skeleton)):
             bone_names_map = src_skeleton.conversion_map(trg_skeleton)
@@ -169,6 +157,18 @@ class ConvertBoneNaming(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def skeleton_from_type(skeleton_type):
+    # TODO: this would be better handled by EnumTypes
+    if skeleton_type == 'mixamo':
+        return bone_mapping.MixamoSkeleton()
+    if skeleton_type == 'rigify':
+        return bone_mapping.RigifySkeleton()
+    if skeleton_type == 'rigify_meta':
+        return bone_mapping.RigifyMeta()
+    if skeleton_type == 'unreal':
+        return bone_mapping.UnrealSkeleton()
+
+
 class ExtractMetarig(bpy.types.Operator):
     """Create Metarig from current object"""
     bl_idname = "object.charigty_extract_metarig"
@@ -179,6 +179,10 @@ class ExtractMetarig(bpy.types.Operator):
     skeleton_type: EnumProperty(items=skeleton_types,
                                 name="Source Type",
                                 default='--')
+
+    # TODO: float min_forward knee
+    # TODO: float min_forward elbow
+    # TODO: bool generate
 
     @classmethod
     def poll(cls, context):
@@ -192,12 +196,18 @@ class ExtractMetarig(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        # TODO: look for existing metarig to update
+        src_armature = context.object.data
+        src_skeleton = skeleton_from_type(self.skeleton_type)
+        if not src_skeleton:
+            return {'FINISHED'}
 
+        # TODO: convert from src_skeleton to rigify skeleton first
+
+        # TODO: look for existing metarig to update
         from rigify.metarigs import human
 
-        armature = bpy.data.armatures.new('metarig')
-        metarig = bpy.data.objects.new("metarig", armature)
+        met_armature = bpy.data.armatures.new('metarig')
+        metarig = bpy.data.objects.new("metarig", met_armature)
         context.collection.objects.link(metarig)
 
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -208,6 +218,63 @@ class ExtractMetarig(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
 
         human.create(metarig)
+
+        src_skeleton = skeleton_from_type(self.skeleton_type)
+        met_skeleton = bone_mapping.RigifyMeta()
+
+        def match_meta_bone(met_bone_group, src_bone_group, bone_attr):
+            met_bone = met_armature.edit_bones[getattr(met_bone_group, bone_attr)]
+            src_bone = src_armature.bones.get(getattr(src_bone_group, bone_attr), None)
+
+            if not src_bone:
+                print(bone_attr, "not found in", src_armature)
+                return
+
+            met_bone.head = src_bone.head_local
+            met_bone.tail = src_bone.tail_local
+            # TODO: roll
+
+        for bone_attr in ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head']:
+            match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr)
+
+        for bone_attr in ['shoulder', 'arm', 'forearm', 'hand']:
+            match_meta_bone(met_skeleton.right_arm, src_skeleton.right_arm, bone_attr)
+            match_meta_bone(met_skeleton.left_arm, src_skeleton.left_arm, bone_attr)
+
+        for bone_attr in ['upleg', 'leg', 'foot', 'toe']:
+            match_meta_bone(met_skeleton.right_leg, src_skeleton.right_leg, bone_attr)
+            match_meta_bone(met_skeleton.left_leg, src_skeleton.left_leg, bone_attr)
+
+        def match_meta_fingers(met_bone_group, src_bone_group, bone_attr):
+            met_bone_names = getattr(met_bone_group, bone_attr)
+            src_bone_names = getattr(src_bone_group, bone_attr)
+
+            if not src_bone_names:
+                print(bone_attr, "not found in", src_armature)
+                return
+            if not met_bone_names:
+                print(bone_attr, "not found in", src_armature)
+                return
+
+            for met_bone_name, src_bone_name in zip(met_bone_names, src_bone_names):
+                met_bone = met_armature.edit_bones[met_bone_name]
+                src_bone = src_armature.bones.get(src_bone_name, None)
+
+                met_bone.head = src_bone.head_local
+                met_bone.tail = src_bone.tail_local
+
+        for bone_attr in ['thumb', 'index', 'middle', 'ring', 'pinky']:
+            match_meta_fingers(met_skeleton.right_fingers, src_skeleton.right_fingers, bone_attr)
+            match_meta_fingers(met_skeleton.left_fingers, src_skeleton.left_fingers, bone_attr)
+
+        met_armature.edit_bones['spine.003'].tail = met_armature.edit_bones['spine.004'].head
+        met_armature.edit_bones['spine.005'].head = (met_armature.edit_bones['spine.004'].head + met_armature.edit_bones['spine.006'].head) / 2
+
+        # TODO: pelvis
+        # TODO: breast
+        # TODO: palm
+        # TODO: heel
+        # TODO: remove face
 
         return {'FINISHED'}
 
