@@ -274,7 +274,9 @@ class ExtractMetarig(bpy.types.Operator):
         # TODO: breast
         # TODO: palm
         # TODO: heel
-        # TODO: remove face
+
+        for bone_name in bone_mapping.rigify_face_bones:
+            met_armature.edit_bones.remove(met_armature.edit_bones[bone_name])
 
         return {'FINISHED'}
 
