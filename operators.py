@@ -189,6 +189,9 @@ class ExtractMetarig(bpy.types.Operator):
     offset_elbow: FloatProperty(name='Offset Elbow',
                                 default=0.0)
 
+    no_face: BoolProperty(name='No face bones',
+                          default=True)
+
     @classmethod
     def poll(cls, context):
         if not context.object:
@@ -209,12 +212,16 @@ class ExtractMetarig(bpy.types.Operator):
 
         # TODO: convert from src_skeleton to rigify skeleton first
 
-        # TODO: look for existing metarig to update
-        from rigify.metarigs import human
+        try:
+            metarig = next(ob for ob in bpy.data.objects if ob.type == 'ARMATURE' and ob.data.rigify_target_rig == src_object)
+            met_armature = metarig.data
+            create_metarig = False
+        except StopIteration:
+            create_metarig = True
+            met_armature = bpy.data.armatures.new('metarig')
+            metarig = bpy.data.objects.new("metarig", met_armature)
 
-        met_armature = bpy.data.armatures.new('metarig')
-        metarig = bpy.data.objects.new("metarig", met_armature)
-        context.collection.objects.link(metarig)
+            context.collection.objects.link(metarig)
 
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
@@ -223,7 +230,9 @@ class ExtractMetarig(bpy.types.Operator):
         bpy.context.view_layer.objects.active = metarig
         bpy.ops.object.mode_set(mode='EDIT')
 
-        human.create(metarig)
+        if create_metarig:
+            from rigify.metarigs import human
+            human.create(metarig)
 
         src_skeleton = skeleton_from_type(self.skeleton_type)
         met_skeleton = bone_mapping.RigifyMeta()
@@ -335,8 +344,14 @@ class ExtractMetarig(bpy.types.Operator):
             breast_bone.head.z = spine_bone.head.z
             breast_bone.tail.z = spine_bone.head.z
 
-        for bone_name in bone_mapping.rigify_face_bones:
-            met_armature.edit_bones.remove(met_armature.edit_bones[bone_name])
+        if self.no_face:
+            for bone_name in bone_mapping.rigify_face_bones:
+                try:
+                    face_bone = met_armature.edit_bones[bone_name]
+                except KeyError:
+                    continue
+
+                met_armature.edit_bones.remove(face_bone)
 
         bpy.ops.object.mode_set(mode='POSE')
         met_armature.rigify_target_rig = src_object
