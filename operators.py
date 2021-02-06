@@ -11,6 +11,9 @@ from importlib import reload
 reload(bone_mapping)
 reload(bone_utils)
 
+from mathutils import Vector
+from math import pi
+
 
 status_types = (
     ('enable', "Enable", "Enable All Constraints"),
@@ -185,7 +188,6 @@ class ExtractMetarig(bpy.types.Operator):
 
     # TODO: float min_forward knee
     # TODO: float min_forward elbow
-    # TODO: bool generate
 
     @classmethod
     def poll(cls, context):
@@ -236,7 +238,11 @@ class ExtractMetarig(bpy.types.Operator):
 
             met_bone.head = src_bone.head_local
             met_bone.tail = src_bone.tail_local
-            # TODO: roll
+            met_bone.roll = 0.0
+
+            src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local
+            dot_z = met_bone.z_axis.dot(src_z_axis)
+            met_bone.roll = (1 - dot_z) * pi
 
         for bone_attr in ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head']:
             match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr)
@@ -265,7 +271,16 @@ class ExtractMetarig(bpy.types.Operator):
                 src_bone = src_armature.bones.get(src_bone_name, None)
 
                 met_bone.head = src_bone.head_local
-                met_bone.tail = src_bone.tail_local
+                try:
+                    met_bone.tail = src_bone.children[0].head_local
+                except IndexError:
+                    met_bone.tail = src_bone.tail_local
+
+                met_bone.roll = 0.0
+
+                src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local
+                dot_z = met_bone.z_axis.dot(src_z_axis)
+                met_bone.roll = (1 - dot_z) * pi
 
         for bone_attr in ['thumb', 'index', 'middle', 'ring', 'pinky']:
             match_meta_fingers(met_skeleton.right_fingers, src_skeleton.right_fingers, bone_attr)
