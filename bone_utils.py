@@ -425,3 +425,15 @@ def gamefriendly_hierarchy(ob, fix_tail=True, limit_scale=False):
         ob.data.edit_bones[def_root_name].parent = ob.data.edit_bones['root']
     except KeyError:
         print("WARNING: DEF hierarchy root was not parented to root bone")
+
+
+def iterate_rigged_obs(armature_object):
+    for ob in bpy.data.objects:
+        if ob.type != 'MESH':
+            continue
+        if not ob.modifiers:
+            continue
+        for modifier in [mod for mod in ob.modifiers if mod.type == 'ARMATURE']:
+            if modifier.object == armature_object:
+                yield ob
+                break
