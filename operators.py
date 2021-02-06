@@ -336,13 +336,31 @@ class ExtractMetarig(bpy.types.Operator):
             toe_bone = met_armature.edit_bones['toe.' + side]
 
             heel_length = heel_bone.length
-            # TODO: get backmost heel vertex from rigged model
+
             if heel_bone.head.x > 0:
                 heel_bone.head.x = toe_bone.head.x - heel_length/2
                 heel_bone.tail.x = toe_bone.head.x + heel_length/2
             else:
                 heel_bone.head.x = toe_bone.head.x + heel_length / 2
                 heel_bone.tail.x = toe_bone.head.x - heel_length / 2
+
+
+            # find foot vertices
+            foot_verts = {}
+            foot_ob = None
+            # pick object with most foot verts
+            for ob in bone_utils.iterate_rigged_obs(src_object):
+                if src_skeleton.left_leg.foot not in ob.vertex_groups:
+                    continue
+                grouped_verts = bone_utils.get_group_verts(ob, src_skeleton.left_leg.foot, threshold=0.8)
+                if len(grouped_verts) > len(foot_verts):
+                    foot_verts = grouped_verts
+                    foot_ob = ob
+
+            # find rear verts (heel)
+            rearest_y = max([foot_ob.data.vertices[v].co[1] for v in foot_verts])
+            heel_bone.head.y = rearest_y
+            heel_bone.tail.y = rearest_y
 
             spine_bone = met_armature.edit_bones['spine']
             pelvis_bone = met_armature.edit_bones['pelvis.' + side]

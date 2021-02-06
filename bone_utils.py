@@ -437,3 +437,21 @@ def iterate_rigged_obs(armature_object):
             if modifier.object == armature_object:
                 yield ob
                 break
+
+
+def get_group_verts(obj, vertex_group, threshold=0.1):
+    group_idx = obj.vertex_groups[vertex_group].index
+    weighted_verts = []
+
+    for i, v in enumerate(obj.data.vertices):
+        try:
+            g = next(g for g in v.groups if g.group == group_idx)
+        except StopIteration:
+            continue
+
+        if g.weight < threshold:
+            continue
+
+        weighted_verts.append(i)
+
+    return weighted_verts
