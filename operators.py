@@ -322,6 +322,23 @@ class ExtractMetarig(bpy.types.Operator):
         met_armature.edit_bones['spine.003'].tail = met_armature.edit_bones['spine.004'].head
         met_armature.edit_bones['spine.005'].head = (met_armature.edit_bones['spine.004'].head + met_armature.edit_bones['spine.006'].head) / 2
 
+        # find foot vertices
+        foot_verts = {}
+        foot_ob = None
+        # pick object with most foot verts
+        for ob in bone_utils.iterate_rigged_obs(src_object):
+            if src_skeleton.left_leg.foot not in ob.vertex_groups:
+                continue
+            grouped_verts = bone_utils.get_group_verts(ob, src_skeleton.left_leg.foot, threshold=0.8)
+            if len(grouped_verts) > len(foot_verts):
+                foot_verts = grouped_verts
+                foot_ob = ob
+
+        # find rear verts (heel)
+        rearest_y = max([foot_ob.data.vertices[v].co[1] for v in foot_verts])
+        leftmost_x = max([foot_ob.data.vertices[v].co[0] for v in foot_verts])  # FIXME: we should counter rotate verts for more accuracy
+        rightmost_x = min([foot_ob.data.vertices[v].co[0] for v in foot_verts])
+
         for side in "L", "R":
             hand_bone = met_armature.edit_bones['hand.' + side]
             for i in range(1, 5):
@@ -333,34 +350,18 @@ class ExtractMetarig(bpy.types.Operator):
                 palm_bone.tail = child_head
 
             heel_bone = met_armature.edit_bones['heel.02.' + side]
-            toe_bone = met_armature.edit_bones['toe.' + side]
 
-            heel_length = heel_bone.length
-
-            if heel_bone.head.x > 0:
-                heel_bone.head.x = toe_bone.head.x - heel_length/2
-                heel_bone.tail.x = toe_bone.head.x + heel_length/2
-            else:
-                heel_bone.head.x = toe_bone.head.x + heel_length / 2
-                heel_bone.tail.x = toe_bone.head.x - heel_length / 2
-
-
-            # find foot vertices
-            foot_verts = {}
-            foot_ob = None
-            # pick object with most foot verts
-            for ob in bone_utils.iterate_rigged_obs(src_object):
-                if src_skeleton.left_leg.foot not in ob.vertex_groups:
-                    continue
-                grouped_verts = bone_utils.get_group_verts(ob, src_skeleton.left_leg.foot, threshold=0.8)
-                if len(grouped_verts) > len(foot_verts):
-                    foot_verts = grouped_verts
-                    foot_ob = ob
-
-            # find rear verts (heel)
-            rearest_y = max([foot_ob.data.vertices[v].co[1] for v in foot_verts])
             heel_bone.head.y = rearest_y
             heel_bone.tail.y = rearest_y
+
+            if heel_bone.head.x > 0:
+                heel_head = leftmost_x
+                heel_tail = rightmost_x
+            else:
+                heel_head = rightmost_x * -1
+                heel_tail = leftmost_x * -1
+            heel_bone.head.x = heel_head
+            heel_bone.tail.x = heel_tail
 
             spine_bone = met_armature.edit_bones['spine']
             pelvis_bone = met_armature.edit_bones['pelvis.' + side]
