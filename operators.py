@@ -142,20 +142,21 @@ class ConvertBoneNaming(bpy.types.Operator):
                     continue
                 src_bone.name = trg_name
 
-            for driver in chain(context.object.animation_data.drivers, context.object.data.animation_data.drivers):
-                try:
-                    driver_bone = driver.data_path.split('"')[1]
+            if context.object.animation_data and context.object.data.animation_data:
+                for driver in chain(context.object.animation_data.drivers, context.object.data.animation_data.drivers):
+                    try:
+                        driver_bone = driver.data_path.split('"')[1]
 
-                except IndexError:
-                    continue
+                    except IndexError:
+                        continue
 
-                try:
-                    trg_name = bone_names_map[driver_bone]
-                except KeyError:
-                    continue
+                    try:
+                        trg_name = bone_names_map[driver_bone]
+                    except KeyError:
+                        continue
 
-                driver.data_path = driver.data_path.replace('bones["{0}"'.format(driver_bone),
-                                                            'bones["{0}"'.format(trg_name))
+                    driver.data_path = driver.data_path.replace('bones["{0}"'.format(driver_bone),
+                                                                'bones["{0}"'.format(trg_name))
 
         return {'FINISHED'}
 
@@ -192,6 +193,13 @@ class ExtractMetarig(bpy.types.Operator):
     no_face: BoolProperty(name='No face bones',
                           default=True)
 
+    rigify_names: BoolProperty(name='Use rifify names',
+                               default=True)
+
+    assign_metarig: BoolProperty(name='Assign metarig',
+                                 default=True,
+                                 description='Rigify will generate to the active object')
+
     @classmethod
     def poll(cls, context):
         if not context.object:
@@ -207,10 +215,13 @@ class ExtractMetarig(bpy.types.Operator):
         src_object = context.object
         src_armature = context.object.data
         src_skeleton = skeleton_from_type(self.skeleton_type)
+
         if not src_skeleton:
             return {'FINISHED'}
 
-        # TODO: convert from src_skeleton to rigify skeleton first
+        if self.skeleton_type != 'rigify' and self.rigify_names:
+            bpy.ops.object.charigty_convert_bone_names(source=self.skeleton_type, target='rigify')
+            src_skeleton = skeleton_from_type('rigify')
 
         try:
             metarig = next(ob for ob in bpy.data.objects if ob.type == 'ARMATURE' and ob.data.rigify_target_rig == src_object)
@@ -234,7 +245,6 @@ class ExtractMetarig(bpy.types.Operator):
             from rigify.metarigs import human
             human.create(metarig)
 
-        src_skeleton = skeleton_from_type(self.skeleton_type)
         met_skeleton = bone_mapping.RigifyMeta()
 
         def match_meta_bone(met_bone_group, src_bone_group, bone_attr):
@@ -354,7 +364,8 @@ class ExtractMetarig(bpy.types.Operator):
                 met_armature.edit_bones.remove(face_bone)
 
         bpy.ops.object.mode_set(mode='POSE')
-        met_armature.rigify_target_rig = src_object
+        if self.assign_metarig:
+            met_armature.rigify_target_rig = src_object
 
         return {'FINISHED'}
 
