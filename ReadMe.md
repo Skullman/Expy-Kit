@@ -9,6 +9,7 @@
 * Convert Bone Names to export rigify character to mixamo
 * Connect child bones
 * Set playback range from action keyframes
+* Extract rigify metarig from rigged character
 * Make Game Friendly hierarchy from rigify rigs
 
 

@@ -302,8 +302,8 @@ class UnrealSkeleton(HumanSkeleton):
                     thumb=["thumb_{0:02d}{1}".format(i, side) for i in range(1, 4)],
                     index=["index_{0:02d}{1}".format(i, side) for i in range(1, 4)],
                     middle=["middle_{0:02d}{1}".format(i, side) for i in range(1, 4)],
-                    ring=["ring{0:02d}{1}".format(i, side) for i in range(1, 4)],
-                    pinky=["pinky{0:02d}{1}".format(i, side) for i in range(1, 4)],
+                    ring=["ring_{0:02d}{1}".format(i, side) for i in range(1, 4)],
+                    pinky=["pinky_{0:02d}{1}".format(i, side) for i in range(1, 4)],
                 )
 
         self.left_leg = HumanLeg(upleg="thigh{0}".format(side),
@@ -321,8 +321,8 @@ class UnrealSkeleton(HumanSkeleton):
                     thumb=["thumb_{0:02d}{1}".format(i, side) for i in range(1, 4)],
                     index=["index_{0:02d}{1}".format(i, side) for i in range(1, 4)],
                     middle=["middle_{0:02d}{1}".format(i, side) for i in range(1, 4)],
-                    ring=["ring{0:02d}{1}".format(i, side) for i in range(1, 4)],
-                    pinky=["pinky{0:02d}{1}".format(i, side) for i in range(1, 4)],
+                    ring=["ring_{0:02d}{1}".format(i, side) for i in range(1, 4)],
+                    pinky=["pinky_{0:02d}{1}".format(i, side) for i in range(1, 4)],
                 )
 
         self.right_leg = HumanLeg(upleg="thigh{0}".format(side),

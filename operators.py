@@ -328,7 +328,11 @@ class ExtractMetarig(bpy.types.Operator):
 
             for met_bone_name, src_bone_name in zip(met_bone_names, src_bone_names):
                 met_bone = met_armature.edit_bones[met_bone_name]
-                src_bone = src_armature.bones.get(src_bone_name, None)
+                try:
+                    src_bone = src_armature.bones[src_bone_name]
+                except KeyError:
+                    print("source bone not found", src_bone_name)
+                    continue
 
                 met_bone.head = src_bone.head_local
                 try:
