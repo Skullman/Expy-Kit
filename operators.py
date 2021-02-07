@@ -313,6 +313,15 @@ class ExtractMetarig(bpy.types.Operator):
                 print(bone_attr, "not found in", src_armature)
                 return
 
+            if 'thumb' not in bone_attr:
+                met_bone = met_armature.edit_bones[met_bone_names[0]]
+                palm_bone = met_bone.parent
+
+                palm_bone.tail = met_bone.head
+                hand_bone = palm_bone.parent
+                palm_bone.head = hand_bone.head * 0.75 + met_bone.head * 0.25
+                palm_bone.roll = 0
+
             for met_bone_name, src_bone_name in zip(met_bone_names, src_bone_names):
                 met_bone = met_armature.edit_bones[met_bone_name]
                 src_bone = src_armature.bones.get(src_bone_name, None)
@@ -356,17 +365,6 @@ class ExtractMetarig(bpy.types.Operator):
         rightmost_x = min([foot_ob.data.vertices[v].co[0] for v in foot_verts])
 
         for side in "L", "R":
-            hand_bone = met_armature.edit_bones['hand.' + side]
-            for i in range(1, 5):
-                bone_name = "palm.{0:02d}.{1}".format(i, side)
-                palm_bone = met_armature.edit_bones[bone_name]
-
-                child_head = palm_bone.children[0].head
-                palm_bone.head = hand_bone.head * 0.75 + child_head * 0.25
-                palm_bone.head.y = child_head.y
-                palm_bone.tail = child_head
-                palm_bone.roll = 0.0
-
             heel_bone = met_armature.edit_bones['heel.02.' + side]
 
             heel_bone.head.y = rearest_y
@@ -390,10 +388,6 @@ class ExtractMetarig(bpy.types.Operator):
             breast_bone = met_armature.edit_bones['breast.' + side]
             breast_bone.head.z = spine_bone.head.z
             breast_bone.tail.z = spine_bone.head.z
-
-        for bone_attr in ['thumb', 'index', 'middle', 'ring', 'pinky']:
-            match_meta_fingers(met_skeleton.right_fingers, src_skeleton.right_fingers, bone_attr)
-            match_meta_fingers(met_skeleton.left_fingers, src_skeleton.left_fingers, bone_attr)
 
         if self.no_face:
             for bone_name in bone_mapping.rigify_face_bones:
