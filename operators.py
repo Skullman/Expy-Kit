@@ -338,7 +338,31 @@ class ExtractMetarig(bpy.types.Operator):
                 try:
                     met_bone.tail = src_bone.children[0].head_local
                 except IndexError:
-                    met_bone.tail = src_bone.tail_local
+                    # align with parent, looking for closest axis
+                    src_rot = src_bone.matrix_local.to_3x3().inverted()
+                    src_x_axis = src_rot[0]
+                    src_y_axis = src_rot[1]
+                    src_z_axis = src_rot[2]
+
+                    bone_direction = met_bone.parent.vector.normalized()
+                    dot_x = abs(bone_direction.dot(src_x_axis))
+                    dot_y = abs(bone_direction.dot(src_y_axis))
+                    dot_z = abs(bone_direction.dot(src_z_axis))
+
+                    matching_dot = max(dot_x, dot_y, dot_z)
+                    if matching_dot == dot_x:
+                        closer_axis = src_x_axis
+                    elif matching_dot == dot_y:
+                        closer_axis = src_y_axis
+                    else:
+                        closer_axis = src_z_axis
+
+                    offset = closer_axis * src_bone.length
+                    if closer_axis.dot(bone_direction) < 0:
+                        offset *= -1
+
+                    met_bone.tail = met_bone.head + offset
+
 
                 met_bone.roll = 0.0
 
