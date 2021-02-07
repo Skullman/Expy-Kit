@@ -46,7 +46,14 @@ class ConstraintStatus(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return all((context.object, context.mode == 'POSE', context.object.type == 'ARMATURE'))
+        if not context.object:
+            return False
+        if context.mode != 'POSE':
+            return False
+        if context.object.type != 'ARMATURE':
+            return False
+
+        return True
 
     def execute(self, context):
         bones = context.selected_pose_bones if self.selected_only else context.object.pose.bones
@@ -120,7 +127,14 @@ class ConvertBoneNaming(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return all((context.object, context.mode == 'POSE', context.object.type == 'ARMATURE'))
+        if not context.object:
+            return False
+        if context.mode != 'POSE':
+            return False
+        if context.object.type != 'ARMATURE':
+            return False
+
+        return True
 
     def execute(self, context):
         src_skeleton = skeleton_from_type(self.source)
@@ -311,9 +325,11 @@ class ExtractMetarig(bpy.types.Operator):
 
                 met_bone.roll = 0.0
 
-                src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local
-                dot_z = met_bone.z_axis.dot(src_z_axis)
-                met_bone.roll = (1 - dot_z) * pi
+                src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local.to_3x3()
+                inv_rot = met_bone.matrix.to_3x3().inverted()
+                trg_z_axis = src_z_axis @ inv_rot
+                dot_z = (met_bone.z_axis @ met_bone.matrix.inverted()).dot(trg_z_axis)
+                met_bone.roll = dot_z * pi
 
         for bone_attr in ['thumb', 'index', 'middle', 'ring', 'pinky']:
             match_meta_fingers(met_skeleton.right_fingers, src_skeleton.right_fingers, bone_attr)
@@ -347,7 +363,9 @@ class ExtractMetarig(bpy.types.Operator):
 
                 child_head = palm_bone.children[0].head
                 palm_bone.head = hand_bone.head * 0.75 + child_head * 0.25
+                palm_bone.head.y = child_head.y
                 palm_bone.tail = child_head
+                palm_bone.roll = 0.0
 
             heel_bone = met_armature.edit_bones['heel.02.' + side]
 
@@ -372,6 +390,10 @@ class ExtractMetarig(bpy.types.Operator):
             breast_bone = met_armature.edit_bones['breast.' + side]
             breast_bone.head.z = spine_bone.head.z
             breast_bone.tail.z = spine_bone.head.z
+
+        for bone_attr in ['thumb', 'index', 'middle', 'ring', 'pinky']:
+            match_meta_fingers(met_skeleton.right_fingers, src_skeleton.right_fingers, bone_attr)
+            match_meta_fingers(met_skeleton.left_fingers, src_skeleton.left_fingers, bone_attr)
 
         if self.no_face:
             for bone_name in bone_mapping.rigify_face_bones:
@@ -403,6 +425,8 @@ class ActionRangeToScene(bpy.types.Operator):
         if not obj:
             return False
         if not obj.mode == 'POSE':
+            return False
+        if not obj.animation_data:
             return False
         if not obj.animation_data.action:
             return False
