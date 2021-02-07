@@ -273,9 +273,11 @@ class ExtractMetarig(bpy.types.Operator):
             met_bone.tail = src_bone.tail_local
             met_bone.roll = 0.0
 
-            src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local
-            dot_z = met_bone.z_axis.dot(src_z_axis)
-            met_bone.roll = (1 - dot_z) * pi
+            src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local.to_3x3()
+            inv_rot = met_bone.matrix.to_3x3().inverted()
+            trg_z_axis = src_z_axis @ inv_rot
+            dot_z = (met_bone.z_axis @ met_bone.matrix.inverted()).dot(trg_z_axis)
+            met_bone.roll = dot_z * pi
 
         for bone_attr in ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head']:
             match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr)
@@ -315,12 +317,14 @@ class ExtractMetarig(bpy.types.Operator):
 
             if 'thumb' not in bone_attr:
                 met_bone = met_armature.edit_bones[met_bone_names[0]]
-                palm_bone = met_bone.parent
+                src_bone = src_armature.bones.get(src_bone_names[0], None)
+                if src_bone:
+                    palm_bone = met_bone.parent
 
-                palm_bone.tail = met_bone.head
-                hand_bone = palm_bone.parent
-                palm_bone.head = hand_bone.head * 0.75 + met_bone.head * 0.25
-                palm_bone.roll = 0
+                    palm_bone.tail = src_bone.head_local
+                    hand_bone = palm_bone.parent
+                    palm_bone.head = hand_bone.head * 0.75 + src_bone.head_local * 0.25
+                    palm_bone.roll = 0
 
             for met_bone_name, src_bone_name in zip(met_bone_names, src_bone_names):
                 met_bone = met_armature.edit_bones[met_bone_name]
