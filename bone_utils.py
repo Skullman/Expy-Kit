@@ -338,39 +338,36 @@ def gamefriendly_hierarchy(ob, fix_tail=True, limit_scale=False):
     Create ITD- (InTermeDiate) bones in the process"""
     assert (ob.mode == 'EDIT')
 
-    pbones = list(ob.pose.bones)  # a list of pose bones is safer when switching through modes
+    bone_names = list((b.name for b in ob.data.bones if is_def_bone(ob, b.name)))
     new_bone_names = []  # collect newly added bone names so that they can be edited later in Object Mode
 
     def_root_name = get_deform_root_name(ob)
 
     # we want deforming bone (i.e. the ones on layer 29) to have deforming bone parents
-    for pbone in pbones:
-        bone_name = pbone.name
-
-        if not is_def_bone(ob, bone_name):
-            continue
+    for bone_name in bone_names:
         if bone_name == def_root_name:
             continue
-        if not pbone.parent:
+
+        if not ob.pose.bones[bone_name].parent:
             # root bones are fine
             continue
-        if is_def_bone(ob, pbone.parent.name):
-            continue
-        if not bone_name.startswith("DEF-"):
-            # we are only dealing with Rigify DEF- bones so far
-            print("WARNING: {0}, not supported for Game Friendly Conversion".format(bone_name))
+        if is_def_bone(ob, ob.pose.bones[bone_name].parent.name):
             continue
 
         # Intermediate Bone
         itd_name = bone_name.replace("DEF-", "ITD-")
+        itd_name = itd_name.replace("MCH-", "ITD-")
+        if not itd_name.startswith("ITD-"):
+            itd_name = "ITD-" + itd_name
         try:
             ob.data.edit_bones[itd_name]
         except KeyError:
-            itd_name = copy_bone(ob, bone_name, assign_name=bone_name.replace("DEF-", "ITD-"), constraints=True,
+            itd_name = copy_bone(ob, bone_name, assign_name=itd_name, constraints=True,
                                  deform_bone=False)
             new_bone_names.append(itd_name)
 
         # DEF- bone will now follow the ITD- bone
+        pbone = ob.pose.bones[bone_name]
         remove_bone_constraints(pbone)
         for cp_constr in (pbone.constraints.new('COPY_LOCATION'),
                           pbone.constraints.new('COPY_ROTATION'),

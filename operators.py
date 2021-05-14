@@ -151,7 +151,10 @@ class ConvertBoneNaming(bpy.types.Operator):
                     bone.name = bone.name.rsplit(self._separator, 1)[1]
 
             for src_name, trg_name in bone_names_map.items():
-                src_bone = context.object.data.bones.get(src_name, None)
+                try:
+                    src_bone = context.object.data.bones.get(src_name, None)
+                except SystemError:
+                    continue
                 if not src_bone:
                     continue
                 src_bone.name = trg_name
@@ -185,6 +188,32 @@ def skeleton_from_type(skeleton_type):
         return bone_mapping.RigifyMeta()
     if skeleton_type == 'unreal':
         return bone_mapping.UnrealSkeleton()
+
+
+def align_to_closer_axis(src_bone, trg_bone):
+    src_rot = src_bone.matrix_local.to_3x3().inverted()
+    src_x_axis = src_rot[0]
+    src_y_axis = src_rot[1]
+    src_z_axis = src_rot[2]
+
+    bone_direction = trg_bone.parent.vector.normalized()
+    dot_x = abs(bone_direction.dot(src_x_axis))
+    dot_y = abs(bone_direction.dot(src_y_axis))
+    dot_z = abs(bone_direction.dot(src_z_axis))
+
+    matching_dot = max(dot_x, dot_y, dot_z)
+    if matching_dot == dot_x:
+        closer_axis = src_x_axis
+    elif matching_dot == dot_y:
+        closer_axis = src_y_axis
+    else:
+        closer_axis = src_z_axis
+
+    offset = closer_axis * src_bone.length
+    if closer_axis.dot(bone_direction) < 0:
+        offset *= -1
+
+    trg_bone.tail = trg_bone.head + offset
 
 
 class ExtractMetarig(bpy.types.Operator):
@@ -271,6 +300,15 @@ class ExtractMetarig(bpy.types.Operator):
 
             met_bone.head = src_bone.head_local
             met_bone.tail = src_bone.tail_local
+
+            if met_bone.parent and met_bone.use_connect:
+                bone_dir = met_bone.vector.normalized()
+                parent_dir = met_bone.parent.vector.normalized()
+
+                if bone_dir.dot(parent_dir) < -0.6:
+                    print(met_bone.name, "non aligned")
+                    # TODO
+
             met_bone.roll = 0.0
 
             src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local.to_3x3()
@@ -338,31 +376,7 @@ class ExtractMetarig(bpy.types.Operator):
                 try:
                     met_bone.tail = src_bone.children[0].head_local
                 except IndexError:
-                    # align with parent, looking for closest axis
-                    src_rot = src_bone.matrix_local.to_3x3().inverted()
-                    src_x_axis = src_rot[0]
-                    src_y_axis = src_rot[1]
-                    src_z_axis = src_rot[2]
-
-                    bone_direction = met_bone.parent.vector.normalized()
-                    dot_x = abs(bone_direction.dot(src_x_axis))
-                    dot_y = abs(bone_direction.dot(src_y_axis))
-                    dot_z = abs(bone_direction.dot(src_z_axis))
-
-                    matching_dot = max(dot_x, dot_y, dot_z)
-                    if matching_dot == dot_x:
-                        closer_axis = src_x_axis
-                    elif matching_dot == dot_y:
-                        closer_axis = src_y_axis
-                    else:
-                        closer_axis = src_z_axis
-
-                    offset = closer_axis * src_bone.length
-                    if closer_axis.dot(bone_direction) < 0:
-                        offset *= -1
-
-                    met_bone.tail = met_bone.head + offset
-
+                    align_to_closer_axis(src_bone, met_bone)
 
                 met_bone.roll = 0.0
 
@@ -391,35 +405,36 @@ class ExtractMetarig(bpy.types.Operator):
                 foot_verts = grouped_verts
                 foot_ob = ob
 
-        # find rear verts (heel)
-        rearest_y = max([foot_ob.data.vertices[v].co[1] for v in foot_verts])
-        leftmost_x = max([foot_ob.data.vertices[v].co[0] for v in foot_verts])  # FIXME: we should counter rotate verts for more accuracy
-        rightmost_x = min([foot_ob.data.vertices[v].co[0] for v in foot_verts])
+        if foot_verts:
+            # find rear verts (heel)
+            rearest_y = max([foot_ob.data.vertices[v].co[1] for v in foot_verts])
+            leftmost_x = max([foot_ob.data.vertices[v].co[0] for v in foot_verts])  # FIXME: we should counter rotate verts for more accuracy
+            rightmost_x = min([foot_ob.data.vertices[v].co[0] for v in foot_verts])
 
-        for side in "L", "R":
-            heel_bone = met_armature.edit_bones['heel.02.' + side]
+            for side in "L", "R":
+                heel_bone = met_armature.edit_bones['heel.02.' + side]
 
-            heel_bone.head.y = rearest_y
-            heel_bone.tail.y = rearest_y
+                heel_bone.head.y = rearest_y
+                heel_bone.tail.y = rearest_y
 
-            if heel_bone.head.x > 0:
-                heel_head = leftmost_x
-                heel_tail = rightmost_x
-            else:
-                heel_head = rightmost_x * -1
-                heel_tail = leftmost_x * -1
-            heel_bone.head.x = heel_head
-            heel_bone.tail.x = heel_tail
+                if heel_bone.head.x > 0:
+                    heel_head = leftmost_x
+                    heel_tail = rightmost_x
+                else:
+                    heel_head = rightmost_x * -1
+                    heel_tail = leftmost_x * -1
+                heel_bone.head.x = heel_head
+                heel_bone.tail.x = heel_tail
 
-            spine_bone = met_armature.edit_bones['spine']
-            pelvis_bone = met_armature.edit_bones['pelvis.' + side]
-            pelvis_bone.head = spine_bone.head
-            pelvis_bone.tail.z = spine_bone.tail.z
+                spine_bone = met_armature.edit_bones['spine']
+                pelvis_bone = met_armature.edit_bones['pelvis.' + side]
+                pelvis_bone.head = spine_bone.head
+                pelvis_bone.tail.z = spine_bone.tail.z
 
-            spine_bone = met_armature.edit_bones['spine.003']
-            breast_bone = met_armature.edit_bones['breast.' + side]
-            breast_bone.head.z = spine_bone.head.z
-            breast_bone.tail.z = spine_bone.head.z
+                spine_bone = met_armature.edit_bones['spine.003']
+                breast_bone = met_armature.edit_bones['breast.' + side]
+                breast_bone.head.z = spine_bone.head.z
+                breast_bone.tail.z = spine_bone.head.z
 
         if self.no_face:
             for bone_name in bone_mapping.rigify_face_bones:
@@ -523,7 +538,6 @@ class MergeHeadTails(bpy.types.Operator):
                     bone.parent.tail = bone.head
 
                 bone.use_connect = True
-                print("con", bone.use_connect)
 
         context.object.update_from_editmode()
 
@@ -547,6 +561,16 @@ class ConvertGameFriendly(bpy.types.Operator):
         description="Keep copy of datablock",
         default=True
     )
+    rename: BoolProperty(
+        name="Rename",
+        description="Rename rig to 'Armature'",
+        default=True
+    )
+    eye_bones: BoolProperty(
+        name="Keep eye bones",
+        description="Activate 'deform' for eye bones",
+        default=True
+    )
     limit_scale: BoolProperty(
         name="Limit Spine Scale",
         description="Limit scale on the spine deform bones",
@@ -563,7 +587,7 @@ class ConvertGameFriendly(bpy.types.Operator):
         obj = context.active_object
         if not obj:
             return False
-        if obj.mode != 'EDIT':
+        if obj.mode != 'POSE':
             return False
         if obj.type != 'ARMATURE':
             return False
@@ -576,5 +600,19 @@ class ConvertGameFriendly(bpy.types.Operator):
             backup_data.name = ob.name + "_GameUnfriendly_backup"
             backup_data.use_fake_user = True
 
+        if self.rename:
+            ob.name = 'Armature'
+            ob.data.name = 'Armature'
+
+        if self.eye_bones:
+            # Oddly, changes to use_deform are not kept
+            try:
+                ob.pose.bones["MCH-eye.L"].bone.use_deform = True
+                ob.pose.bones["MCH-eye.R"].bone.use_deform = True
+            except KeyError:
+                pass
+
+        bpy.ops.object.mode_set(mode='EDIT')
         bone_utils.gamefriendly_hierarchy(ob, fix_tail=self.fix_tail, limit_scale=self.limit_scale)
+        bpy.ops.object.mode_set(mode='POSE')
         return {'FINISHED'}
