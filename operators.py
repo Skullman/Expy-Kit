@@ -154,8 +154,10 @@ class ConvertBoneNaming(bpy.types.Operator):
                 try:
                     src_bone = context.object.data.bones.get(src_name, None)
                 except SystemError:
+                    print(f"SysError skip {src_bone}")
                     continue
                 if not src_bone:
+                    print(f"Not found {src_bone}")
                     continue
                 src_bone.name = trg_name
 
@@ -428,7 +430,10 @@ class ExtractMetarig(bpy.types.Operator):
 
                 spine_bone = met_armature.edit_bones['spine']
                 pelvis_bone = met_armature.edit_bones['pelvis.' + side]
+                thigh_bone = met_armature.edit_bones['thigh.' + side]
                 pelvis_bone.head = spine_bone.head
+                pelvis_bone.tail.x = thigh_bone.tail.x
+                pelvis_bone.tail.y = spine_bone.tail.y
                 pelvis_bone.tail.z = spine_bone.tail.z
 
                 spine_bone = met_armature.edit_bones['spine.003']
@@ -448,6 +453,8 @@ class ExtractMetarig(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='POSE')
         if self.assign_metarig:
             met_armature.rigify_target_rig = src_object
+
+        metarig.matrix_world = src_object.matrix_world
 
         return {'FINISHED'}
 
