@@ -449,6 +449,7 @@ class ExtractMetarig(bpy.types.Operator):
         if self.assign_metarig:
             met_armature.rigify_target_rig = src_object
 
+        metarig.parent = src_object.parent
         return {'FINISHED'}
 
 

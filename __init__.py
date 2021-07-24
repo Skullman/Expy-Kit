@@ -17,11 +17,11 @@
 
 
 bl_info = {
-    "name": "Charigty Scripts",
+    "name": "Cool Root",
     "version": (0, 0, 1),
     "author": "Paolo Acampora",
     "blender": (2, 90, 0),
-    "description": "Tools for Character Rigging",
+    "description": "Tools for Character Rig Conversion",
     "category": "Rigging",
 }
 

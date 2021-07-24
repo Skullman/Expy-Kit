@@ -1,23 +1,23 @@
 
-# Charigty Scripts
+# Cool Root
 ## blender addon
-### tools that come handy with Character Rigs
+### switch between Character Rig types
 
 * Enable/Disable/Remove all constraints
-* Convert rigify armatures to a deform hierarchy for game engines
-* Restore rigify ".L"/".R" naming on skeletons reimported from Unreal Engine
-* Convert Bone Names to export rigify character to mixamo
+* Convert *Rigify* armatures to a single hierarchy for game engines
+* Restore *Rigify* **.L**/**.R** naming on skeletons reimported from Unreal Engine
+* Convert Bone Names to export *Rigify*/*Unreal* characters to *Mixamo*
 * Connect child bones
-* Set playback range from action keyframes
+* Set playback range from action start/end
 * Extract rigify metarig from rigged character
-* Make Game Friendly hierarchy from rigify rigs
+* Make Game Friendly hierarchy from *Rigify* rigs
 
 
 ### How to use
 
 Click the **Code** button and choose **Download Zip**, then install via the blender **Add-ons** preferences.
 
-Or clone to your `Scripts/addons` path if u're a gangsta
+Or git-clone to your `Scripts/addons` path if u're a gangsta
 
 Once enabled, the script will add the following actions to the pose menu (mouse right click in **pose mode**)
 
@@ -43,4 +43,4 @@ Once enabled, the script will add the following actions to the pose menu (mouse 
     * Target Type
  
  * Rigify Game Friendly: bring rigify deform bones under a single hierarchy,
-  making the rig is suitable for game engines
+  making the rig suitable for game engines
