@@ -290,7 +290,7 @@ class ExtractMetarig(bpy.types.Operator):
 
         met_skeleton = bone_mapping.RigifyMeta()
 
-        def match_meta_bone(met_bone_group, src_bone_group, bone_attr):
+        def match_meta_bone(met_bone_group, src_bone_group, bone_attr, axis=None):
             met_bone = met_armature.edit_bones[getattr(met_bone_group, bone_attr)]
             src_bone = src_armature.bones.get(getattr(src_bone_group, bone_attr), None)
 
@@ -309,16 +309,15 @@ class ExtractMetarig(bpy.types.Operator):
                     print(met_bone.name, "non aligned")
                     # TODO
 
-            met_bone.roll = 0.0
-
-            src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local.to_3x3()
-            inv_rot = met_bone.matrix.to_3x3().inverted()
-            trg_z_axis = src_z_axis @ inv_rot
-            dot_z = (met_bone.z_axis @ met_bone.matrix.inverted()).dot(trg_z_axis)
-            met_bone.roll = dot_z * pi
+            if axis:
+                met_bone.roll = bone_utils.ebone_roll_to_vector(met_bone, axis)
+            else:
+                src_x_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local.inverted().to_3x3()
+                src_x_axis.normalize()
+                met_bone.roll = bone_utils.ebone_roll_to_vector(met_bone, src_x_axis)
 
         for bone_attr in ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head']:
-            match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr)
+            match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr, Vector((0.0, -1.0, 0.0)))
 
         for bone_attr in ['shoulder', 'arm', 'forearm', 'hand']:
             match_meta_bone(met_skeleton.right_arm, src_skeleton.right_arm, bone_attr)
