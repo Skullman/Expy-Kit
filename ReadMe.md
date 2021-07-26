@@ -1,16 +1,15 @@
 
-# Cool Root
+# Expy Kit
 ## blender addon
-### switch between Character Rig types
+### switch between different types of Character Rig
 
-* Enable/Disable/Remove all constraints
 * Convert *Rigify* armatures to a single hierarchy for game engines
+* Extract rigify metarig from rigged character
 * Restore *Rigify* **.L**/**.R** naming on skeletons reimported from Unreal Engine
 * Convert Bone Names to export *Rigify*/*Unreal* characters to *Mixamo*
 * Connect child bones
+* Enable/Disable/Remove all constraints
 * Set playback range from action start/end
-* Extract rigify metarig from rigged character
-* Make Game Friendly hierarchy from *Rigify* rigs
 
 
 ### How to use

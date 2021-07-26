@@ -243,6 +243,9 @@ class ExtractMetarig(bpy.types.Operator):
                                  default=True,
                                  description='Rigify will generate to the active object')
 
+    forward_spine_roll: BoolProperty(name='Align spine frontally', default=False,
+                                     description='Spine Z will face the Y axis')
+
     @classmethod
     def poll(cls, context):
         if not context.object:
@@ -317,7 +320,11 @@ class ExtractMetarig(bpy.types.Operator):
                 met_bone.roll = bone_utils.ebone_roll_to_vector(met_bone, src_x_axis)
 
         for bone_attr in ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head']:
-            match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr, Vector((0.0, -1.0, 0.0)))
+            if self.forward_spine_roll:
+                align = Vector((0.0, -1.0, 0.0))
+            else:
+                align = None
+            match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr, axis=align)
 
         for bone_attr in ['shoulder', 'arm', 'forearm', 'hand']:
             match_meta_bone(met_skeleton.right_arm, src_skeleton.right_arm, bone_attr)
