@@ -17,8 +17,8 @@
 
 
 bl_info = {
-    "name": "Cool Root",
-    "version": (0, 0, 1),
+    "name": "Expy Kit",
+    "version": (0, 1, 0),
     "author": "Paolo Acampora",
     "blender": (2, 90, 0),
     "description": "Tools for Character Rig Conversion",
