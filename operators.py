@@ -154,10 +154,8 @@ class ConvertBoneNaming(bpy.types.Operator):
                 try:
                     src_bone = context.object.data.bones.get(src_name, None)
                 except SystemError:
-                    print(f"SysError skip {src_bone}")
                     continue
                 if not src_bone:
-                    print(f"Not found {src_bone}")
                     continue
                 src_bone.name = trg_name
 
@@ -245,6 +243,9 @@ class ExtractMetarig(bpy.types.Operator):
                                  default=True,
                                  description='Rigify will generate to the active object')
 
+    forward_spine_roll: BoolProperty(name='Align spine frontally', default=False,
+                                     description='Spine Z will face the Y axis')
+
     @classmethod
     def poll(cls, context):
         if not context.object:
@@ -292,7 +293,7 @@ class ExtractMetarig(bpy.types.Operator):
 
         met_skeleton = bone_mapping.RigifyMeta()
 
-        def match_meta_bone(met_bone_group, src_bone_group, bone_attr):
+        def match_meta_bone(met_bone_group, src_bone_group, bone_attr, axis=None):
             met_bone = met_armature.edit_bones[getattr(met_bone_group, bone_attr)]
             src_bone = src_armature.bones.get(getattr(src_bone_group, bone_attr), None)
 
@@ -311,16 +312,19 @@ class ExtractMetarig(bpy.types.Operator):
                     print(met_bone.name, "non aligned")
                     # TODO
 
-            met_bone.roll = 0.0
-
-            src_z_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local.to_3x3()
-            inv_rot = met_bone.matrix.to_3x3().inverted()
-            trg_z_axis = src_z_axis @ inv_rot
-            dot_z = (met_bone.z_axis @ met_bone.matrix.inverted()).dot(trg_z_axis)
-            met_bone.roll = dot_z * pi
+            if axis:
+                met_bone.roll = bone_utils.ebone_roll_to_vector(met_bone, axis)
+            else:
+                src_x_axis = Vector((0.0, 0.0, 1.0)) @ src_bone.matrix_local.inverted().to_3x3()
+                src_x_axis.normalize()
+                met_bone.roll = bone_utils.ebone_roll_to_vector(met_bone, src_x_axis)
 
         for bone_attr in ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head']:
-            match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr)
+            if self.forward_spine_roll:
+                align = Vector((0.0, -1.0, 0.0))
+            else:
+                align = None
+            match_meta_bone(met_skeleton.spine, src_skeleton.spine, bone_attr, axis=align)
 
         for bone_attr in ['shoulder', 'arm', 'forearm', 'hand']:
             match_meta_bone(met_skeleton.right_arm, src_skeleton.right_arm, bone_attr)
@@ -430,10 +434,7 @@ class ExtractMetarig(bpy.types.Operator):
 
                 spine_bone = met_armature.edit_bones['spine']
                 pelvis_bone = met_armature.edit_bones['pelvis.' + side]
-                thigh_bone = met_armature.edit_bones['thigh.' + side]
                 pelvis_bone.head = spine_bone.head
-                pelvis_bone.tail.x = thigh_bone.tail.x
-                pelvis_bone.tail.y = spine_bone.tail.y
                 pelvis_bone.tail.z = spine_bone.tail.z
 
                 spine_bone = met_armature.edit_bones['spine.003']
@@ -454,8 +455,7 @@ class ExtractMetarig(bpy.types.Operator):
         if self.assign_metarig:
             met_armature.rigify_target_rig = src_object
 
-        metarig.matrix_world = src_object.matrix_world
-
+        metarig.parent = src_object.parent
         return {'FINISHED'}
 
 

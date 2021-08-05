@@ -17,11 +17,11 @@
 
 
 bl_info = {
-    "name": "Charigty Scripts",
-    "version": (0, 0, 1),
+    "name": "Expy Kit",
+    "version": (0, 1, 0),
     "author": "Paolo Acampora",
     "blender": (2, 90, 0),
-    "description": "Tools for Character Rigging",
+    "description": "Tools for Character Rig Conversion",
     "category": "Rigging",
 }
 
